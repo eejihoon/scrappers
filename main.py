@@ -26,7 +26,7 @@ import os
 from config import config
 from scrapers import FacebookScraper
 from storage import CsvStorage
-from selectors import get_selectors
+from ad_selectors import get_selectors
 
 
 class AdScraperApp:

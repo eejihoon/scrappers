@@ -17,7 +17,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from .base import BaseScraper
-from selectors import FacebookSelectors
+from ad_selectors import FacebookSelectors
 from config import config
 
 
