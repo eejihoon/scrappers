@@ -296,7 +296,7 @@ class FacebookScraper(BaseScraper):
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
-                return match.group(1)
+                return match.group(1).strip()
         
         return ""
     

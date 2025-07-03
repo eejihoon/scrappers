@@ -82,8 +82,9 @@ class CsvStorage(BaseStorage):
                 # Check if file is empty or malformed, recreate if needed
                 try:
                     with open(self.csv_path, 'r', encoding=self.encoding) as csvfile:
-                        content = csvfile.read().strip()
-                        if not content or not content.startswith('library_id,'):
+                        reader = csv.reader(csvfile)
+                        first_row = next(reader, None)
+                        if not first_row or first_row != self.csv_headers:
                             # Recreate the file with proper headers
                             with open(self.csv_path, 'w', newline='', encoding=self.encoding) as csvfile:
                                 writer = csv.DictWriter(csvfile, fieldnames=self.csv_headers)
