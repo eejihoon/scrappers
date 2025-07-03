@@ -6,7 +6,7 @@
 
 ### 빠른 시작 (5분)
 1. **설치 및 실행**: [설치 및 설정](#설치-및-설정) → [기본 사용법](#기본-사용법)
-2. **첫 실행**: `python main.py --country KR --search-terms "무신사" --max-ads 5`
+2. **첫 실행**: `python main.py --page-id 119546338123785 --country KR --max-ads 5`
 3. **결과 확인**: `output/csv_files/ad_data.csv` 파일 열기
 
 ### 코드 구조 이해하기 (15분)
@@ -70,7 +70,7 @@
 ## 주요 기능
 
 - 페이스북 광고 라이브러리 스크래핑
-- 키워드 또는 특정 페이지 기반 검색
+- 특정 페이지 ID 기반 광고 수집
 - 광고 라이브러리 ID, 시작일, 플랫폼, 썸네일, 더보기 링크 추출
 - CSV 형태로 데이터 저장
 - HTML 아카이브 자동 저장
@@ -95,27 +95,26 @@ pip install -r requirements.txt
 ### 기본 사용법
 
 ```bash
-# 키워드로 검색 (한국)
-python main.py --country KR --search-terms "무신사"
+# 기본 페이지 광고 수집
+python main.py --page-id "119546338123785"
 
-# 특정 페이지의 모든 광고 검색
-python main.py --country KR --page-id "119546338123785"
+# 한국 페이지 광고 수집
+python main.py --page-id "119546338123785" --country KR
 
 # 최대 광고 수 제한
-python main.py --country KR --search-terms "패션" --max-ads 50
+python main.py --page-id "119546338123785" --max-ads 50
 
 # 헤드리스 모드 비활성화 (브라우저 창 표시)
-python main.py --country KR --search-terms "브랜드" --no-headless
+python main.py --page-id "119546338123785" --no-headless
 ```
 
 ### 옵션 설명
 
 | 옵션 | 설명 | 기본값 |
 |------|------|--------|
+| `--page-id` | **필수** 페이스북 페이지 ID | - |
 | `--platform` | 플랫폼 선택 (facebook, google, tiktok) | facebook |
 | `--country` | 국가 코드 (KR, US, JP 등) | US |
-| `--search-terms` | 검색 키워드 | - |
-| `--page-id` | 특정 페이지 ID | - |
 | `--media-type` | 미디어 타입 (all, image, video, text) | all |
 | `--active-status` | 광고 상태 (all, active, inactive) | active |
 | `--max-ads` | 최대 수집 광고 수 | 100 |
@@ -129,20 +128,28 @@ python main.py --country KR --search-terms "브랜드" --no-headless
 
 ### 사용 예시
 
-#### 1. 무신사 키워드 검색
+#### 1. 무신사 페이지 광고 수집
 ```bash
-python main.py --country KR --search-terms "무신사" --max-ads 20
+python main.py --page-id "119546338123785" --country KR --max-ads 20
 ```
 
-#### 2. 특정 페이지의 모든 광고 수집
+#### 2. 미국 페이지 광고 수집
 ```bash
-python main.py --country KR --page-id "119546338123785" --max-ads 50
+python main.py --page-id "123456789" --country US --max-ads 50
 ```
 
 #### 3. 디버그 모드로 실행
 ```bash
-python main.py --country KR --search-terms "패션" --debug --no-headless
+python main.py --page-id "119546338123785" --debug --no-headless
 ```
+
+### 페이지 ID 찾는 방법
+
+페이스북 페이지의 Page ID를 찾으려면:
+1. 페이스북 페이지에 접속
+2. 페이지 소스 보기 (Ctrl+U)
+3. "page_id" 검색하여 숫자 확인
+4. 또는 페이스북 개발자 도구나 외부 도구 사용
 
 ## 출력 데이터
 
@@ -218,7 +225,8 @@ ads/
 ```
 
 #### 광고를 찾을 수 없는 경우
-- 검색 키워드나 페이지 ID 확인
+- 페이지 ID가 올바른지 확인
+- 해당 페이지에 광고가 실제로 있는지 확인
 - 국가 설정 확인
 - 네트워크 연결 상태 확인
 
@@ -233,7 +241,7 @@ ads/
 tail -f scraper.log
 
 # 디버그 모드로 상세 로그 출력
-python main.py --debug --country KR --search-terms "테스트"
+python main.py --page-id "119546338123785" --debug
 ```
 
 ## 라이선스

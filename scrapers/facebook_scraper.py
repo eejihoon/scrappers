@@ -54,7 +54,7 @@ class FacebookScraper(BaseScraper):
         Args:
             search_params: Dictionary containing search parameters:
                 - country: str - Country code (default: 'US')
-                - search_terms: str - Search terms for ads
+                - page_id: str - Facebook Page ID (required)
                 - media_type: str - Media type filter
                 - active_status: str - Active status filter
         
@@ -133,17 +133,13 @@ class FacebookScraper(BaseScraper):
         params.append("is_targeted_country=false")
         params.append("media_type=all")
         
-        # Check if page_id is provided (for specific page search)
+        # Check if page_id is provided (required for Facebook scraping)
         page_id = search_params.get('page_id', '')
-        if page_id:
-            params.append(f"search_type=page")
-            params.append(f"view_all_page_id={page_id}")
-        else:
-            # Default to keyword search
-            params.append("search_type=keyword_unordered")
-            search_terms = search_params.get('search_terms', '')
-            if search_terms:
-                params.append(f"q={search_terms}")
+        if not page_id:
+            raise ValueError("page_id is required for Facebook ad scraping")
+        
+        params.append(f"search_type=page")
+        params.append(f"view_all_page_id={page_id}")
         
         # Add media type override if specified
         media_type = search_params.get('media_type', '')

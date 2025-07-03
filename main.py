@@ -7,12 +7,11 @@ the entire scraping workflow including initialization, data collection,
 storage, and cleanup.
 
 Usage:
-    python main.py [options]
+    python main.py --page-id PAGE_ID [options]
     
 Examples:
-    python main.py                              # Basic Facebook scraping
-    python main.py --platform facebook --country US --max-ads 100
-    python main.py --search-terms "fitness" --headless
+    python main.py --page-id 119546338123785    # Basic page scraping
+    python main.py --page-id 119546338123785 --country KR --max-ads 50
 """
 
 import argparse
@@ -223,8 +222,6 @@ class AdScraperApp:
         
         if self.args.page_id:
             params['page_id'] = self.args.page_id
-        elif self.args.search_terms:
-            params['search_terms'] = self.args.search_terms
         
         if self.args.media_type:
             params['media_type'] = self.args.media_type
@@ -283,11 +280,10 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s                                    # Basic Facebook scraping
-  %(prog)s --platform facebook --country US  # Facebook scraping for US
-  %(prog)s --search-terms "fitness" --max-ads 100  # Search with limit
-  %(prog)s --page-id 119546338123785 --country KR   # Get all ads from specific page
-  %(prog)s --headless --output-file custom.csv     # Headless mode with custom output
+  %(prog)s --page-id 119546338123785                           # Basic page scraping
+  %(prog)s --page-id 119546338123785 --country KR              # Korean page ads
+  %(prog)s --page-id 119546338123785 --max-ads 50              # Limit to 50 ads
+  %(prog)s --page-id 119546338123785 --headless --debug        # Headless debug mode
         """
     )
     
@@ -307,13 +303,9 @@ Examples:
     )
     
     parser.add_argument(
-        '--search-terms',
-        help='Search terms to filter ads'
-    )
-    
-    parser.add_argument(
         '--page-id',
-        help='Facebook Page ID to get all ads from specific page'
+        required=True,
+        help='Facebook Page ID to get all ads from (required)'
     )
     
     parser.add_argument(
