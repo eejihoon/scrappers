@@ -64,19 +64,46 @@ class BaseScraper(ABC):
         prepares the scraper for data collection.
         """
         try:
-            # Setup Chrome options
+            # Setup Chrome options with anti-detection measures
             chrome_options = Options()
             
             if config.HEADLESS:
-                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--headless=new')  # Use new headless mode
             
             chrome_options.add_argument(f'--window-size={config.WINDOW_SIZE[0]},{config.WINDOW_SIZE[1]}')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
             chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_argument('--disable-web-security')
+            chrome_options.add_argument('--allow-running-insecure-content')
+            chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--disable-plugins')
+            chrome_options.add_argument('--disable-images')  # Faster loading
+            chrome_options.add_argument('--disable-javascript-harmony-shipping')
+            chrome_options.add_argument('--disable-notifications')
+            chrome_options.add_argument('--disable-default-apps')
+            chrome_options.add_argument('--disable-background-timer-throttling')
+            chrome_options.add_argument('--disable-renderer-backgrounding')
+            chrome_options.add_argument('--disable-backgrounding-occluded-windows')
+            chrome_options.add_argument('--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.7151.121 Safari/537.36')
+            
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
             chrome_options.add_experimental_option('useAutomationExtension', False)
+            chrome_options.add_experimental_option("detach", True)
+            
+            # Additional prefs to avoid detection
+            prefs = {
+                "profile.default_content_setting_values": {
+                    "notifications": 2,
+                    "media_stream": 2,
+                },
+                "profile.managed_default_content_settings": {
+                    "images": 2  # Block images for faster loading
+                }
+            }
+            chrome_options.add_experimental_option("prefs", prefs)
             
             # Initialize WebDriver
             self.driver = webdriver.Chrome(options=chrome_options)

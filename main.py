@@ -186,8 +186,8 @@ class AdScraperApp:
                 else:
                     self.logger.warning(f"Failed to save ad: {ad_data.get('library_id', 'N/A')}")
                 
-                # Check if we've reached the maximum
-                if self.args.max_ads and ads_scraped >= self.args.max_ads:
+                # Check if we've reached the maximum SAVED ads (not scraped)
+                if self.args.max_ads and ads_saved >= self.args.max_ads:
                     self.logger.info(f"Reached maximum ads limit ({self.args.max_ads})")
                     break
                 

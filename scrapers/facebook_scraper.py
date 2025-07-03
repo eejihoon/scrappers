@@ -239,26 +239,40 @@ class FacebookScraper(BaseScraper):
             Dict[str, Any]: Ad data dictionary or None if extraction failed
         """
         try:
+            # Get all text content from the card element
+            card_text = card_element.text
+            
+            # Skip if no text content
+            if not card_text:
+                self.logger.debug(f"Ad card {card_index}: No text content, skipping")
+                return None
+            
             ad_data = {
                 'platform': self.platform_name,
                 'scraped_at': datetime.now(),
                 'library_id': '',
                 'start_date': '',
-                'platforms': [],
+                'platforms': ['Facebook'],  # Default platform
                 'thumbnail_url': '',
                 'learn_more_url': '',
                 'multiple_versions_images': []
             }
             
-            # Extract basic information
-            ad_data['library_id'] = self._extract_library_id(card_element)
-            ad_data['start_date'] = self._extract_start_date(card_element)
-            ad_data['platforms'] = self._extract_platforms(card_element)
+            # Extract basic information with simpler approach
+            ad_data['library_id'] = self._extract_library_id_simple(card_text)
+            
+            # Skip if no library ID found
+            if not ad_data['library_id']:
+                self.logger.debug(f"Ad card {card_index}: No Library ID found, skipping")
+                return None
+            
+            ad_data['start_date'] = self._extract_start_date_simple(card_text)
+            ad_data['platforms'] = self._extract_platforms_simple(card_text)
             ad_data['thumbnail_url'] = self._extract_thumbnail_url(card_element)
             ad_data['learn_more_url'] = self._extract_learn_more_url(card_element)
             
-            # Extract detailed information (multiple versions)
-            ad_data['multiple_versions_images'] = self._extract_multiple_versions(card_element)
+            # Skip multiple versions for now to improve reliability
+            # ad_data['multiple_versions_images'] = self._extract_multiple_versions(card_element)
             
             self.logger.debug(f"Scraped ad card {card_index}: {ad_data['library_id']}")
             return ad_data
@@ -266,6 +280,57 @@ class FacebookScraper(BaseScraper):
         except Exception as e:
             self.logger.error(f"Error scraping ad card {card_index}: {str(e)}")
             return None
+    
+    def _extract_library_id_simple(self, text: str) -> str:
+        """Extract library ID from text using simple regex."""
+        import re
+        
+        # Look for "라이브러리 ID: " or "Library ID: " followed by numbers
+        patterns = [
+            r'라이브러리 ID:\s*(\d+)',
+            r'Library ID:\s*(\d+)',
+            r'라이브러리ID:\s*(\d+)',
+            r'LibraryID:\s*(\d+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1)
+        
+        return ""
+    
+    def _extract_start_date_simple(self, text: str) -> str:
+        """Extract start date from text."""
+        import re
+        
+        # Look for date patterns
+        patterns = [
+            r'(\d{4}년\s*\d{1,2}월)',  # 2025년 7월
+            r'Started running on\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})',  # Started running on Jul 1, 2025
+            r'게재 시작일:\s*([^\n]+)',
+            r'시작일:\s*([^\n]+)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match:
+                return match.group(1).strip()
+        
+        return ""
+    
+    def _extract_platforms_simple(self, text: str) -> List[str]:
+        """Extract platforms from text."""
+        platforms = []
+        
+        if 'Facebook' in text or 'facebook' in text:
+            platforms.append('Facebook')
+        if 'Instagram' in text or 'instagram' in text:
+            platforms.append('Instagram')
+        if '플랫폼' in text:
+            platforms.append('Facebook')  # Default assumption
+            
+        return platforms if platforms else ['Facebook']
     
     def _extract_library_id(self, card_element) -> str:
         """Extract library ID from ad card."""
