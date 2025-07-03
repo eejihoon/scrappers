@@ -191,15 +191,41 @@ class FacebookScraper(BaseScraper):
         Returns:
             List[WebElement]: List of ad card elements
         """
-        # Try primary selector - div with role="article"
-        cards = self.safe_find_elements(By.CSS_SELECTOR, self.selectors.AD_CARD_CONTAINER)
+        # Find divs containing Library ID text - these are the ad cards
+        cards = self.safe_find_elements(By.XPATH, self.selectors.AD_CARD_CONTAINER_XPATH)
         
-        if not cards:
-            # Try XPath alternative
-            cards = self.safe_find_elements(By.XPATH, self.selectors.AD_CARD_CONTAINER_ALT)
+        # Filter to get the parent containers that represent complete ad cards
+        ad_cards = []
+        for card in cards:
+            # Look for parent element that contains all ad information
+            # Usually 2-4 levels up from the Library ID element
+            current = card
+            for _ in range(5):  # Go up max 5 levels
+                if current.tag_name == 'body':
+                    break
+                parent = current.find_element(By.XPATH, "..")
+                # Check if this parent contains other ad elements
+                if self._is_complete_ad_card(parent):
+                    if parent not in ad_cards:
+                        ad_cards.append(parent)
+                    break
+                current = parent
         
-        self.logger.info(f"Found {len(cards)} ad cards using role='article' selector")
-        return cards
+        self.logger.info(f"Found {len(ad_cards)} ad cards containing Library ID")
+        return ad_cards
+    
+    def _is_complete_ad_card(self, element) -> bool:
+        """Check if element contains a complete ad card."""
+        try:
+            # Check if element contains key ad components
+            text_content = element.text
+            has_library_id = '라이브러리 ID:' in text_content or 'Library ID:' in text_content
+            has_date = '2025' in text_content or '2024' in text_content
+            has_platforms = 'Facebook' in text_content or 'Instagram' in text_content or '플랫폼' in text_content
+            
+            return has_library_id and (has_date or has_platforms)
+        except:
+            return False
     
     def _scrape_ad_card(self, card_element, card_index: int) -> Optional[Dict[str, Any]]:
         """

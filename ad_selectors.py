@@ -20,9 +20,9 @@ class FacebookSelectors:
     as observed in the Korean and English versions.
     """
     
-    # Main ad card container - each ad is in a separate card
-    AD_CARD_CONTAINER = "div[role='article']"
-    AD_CARD_CONTAINER_ALT = "//div[@role='article']"
+    # Main ad card container - look for divs containing Library ID text
+    AD_CARD_CONTAINER = "div"  # We'll filter by content
+    AD_CARD_CONTAINER_XPATH = "//div[contains(., '라이브러리 ID:') or contains(., 'Library ID:')]"
     
     # Library ID - appears as "라이브러리 ID: " or "Library ID: " followed by the ID
     LIBRARY_ID_XPATH = "//span[contains(text(), '라이브러리 ID:') or contains(text(), 'Library ID:')]"
