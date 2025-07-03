@@ -3,6 +3,14 @@ output/
 *.csv
 *.html
 
+# Image files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+
 # Logs
 *.log
 logs/
