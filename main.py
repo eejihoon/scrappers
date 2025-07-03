@@ -221,7 +221,9 @@ class AdScraperApp:
         if self.args.country:
             params['country'] = self.args.country
         
-        if self.args.search_terms:
+        if self.args.page_id:
+            params['page_id'] = self.args.page_id
+        elif self.args.search_terms:
             params['search_terms'] = self.args.search_terms
         
         if self.args.media_type:
@@ -284,6 +286,7 @@ Examples:
   %(prog)s                                    # Basic Facebook scraping
   %(prog)s --platform facebook --country US  # Facebook scraping for US
   %(prog)s --search-terms "fitness" --max-ads 100  # Search with limit
+  %(prog)s --page-id 119546338123785 --country KR   # Get all ads from specific page
   %(prog)s --headless --output-file custom.csv     # Headless mode with custom output
         """
     )
@@ -306,6 +309,11 @@ Examples:
     parser.add_argument(
         '--search-terms',
         help='Search terms to filter ads'
+    )
+    
+    parser.add_argument(
+        '--page-id',
+        help='Facebook Page ID to get all ads from specific page'
     )
     
     parser.add_argument(

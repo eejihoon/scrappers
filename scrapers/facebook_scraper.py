@@ -127,24 +127,39 @@ class FacebookScraper(BaseScraper):
         country = search_params.get('country', 'US')
         params.append(f"country={country}")
         
-        # Add search terms
-        search_terms = search_params.get('search_terms', '')
-        if search_terms:
-            params.append(f"q={search_terms}")
+        # Add default parameters
+        params.append("active_status=active")
+        params.append("ad_type=all")
+        params.append("is_targeted_country=false")
+        params.append("media_type=all")
         
-        # Add media type
+        # Check if page_id is provided (for specific page search)
+        page_id = search_params.get('page_id', '')
+        if page_id:
+            params.append(f"search_type=page")
+            params.append(f"view_all_page_id={page_id}")
+        else:
+            # Default to keyword search
+            params.append("search_type=keyword_unordered")
+            search_terms = search_params.get('search_terms', '')
+            if search_terms:
+                params.append(f"q={search_terms}")
+        
+        # Add media type override if specified
         media_type = search_params.get('media_type', '')
-        if media_type:
+        if media_type and media_type != 'all':
+            # Replace the default media_type=all
+            params = [p for p in params if not p.startswith('media_type=')]
             params.append(f"media_type={media_type}")
         
-        # Add active status
+        # Add active status override if specified
         active_status = search_params.get('active_status', '')
-        if active_status:
+        if active_status and active_status != 'active':
+            # Replace the default active_status=active
+            params = [p for p in params if not p.startswith('active_status=')]
             params.append(f"active_status={active_status}")
         
-        if params:
-            return f"{base_url}?{'&'.join(params)}"
-        return base_url
+        return f"{base_url}?{'&'.join(params)}"
     
     def _wait_for_page_load(self) -> bool:
         """
