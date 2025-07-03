@@ -304,18 +304,35 @@ class FacebookScraper(BaseScraper):
         """Extract start date from text."""
         import re
         
-        # Look for date patterns
+        # Look for detailed date patterns first (more specific to less specific)
         patterns = [
-            r'(\d{4}년\s*\d{1,2}월)',  # 2025년 7월
+            # Korean detailed date formats
+            r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.에\s+게재\s+시작함)',  # 2025. 6. 26.에 게재 시작함
+            r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.에\s+게재\s+시작)',   # 2025. 6. 26.에 게재 시작
+            r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.)',                 # 2025. 6. 26.
+            r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)',                # 2025년 6월 26일
+            r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일에\s+게재\s+시작)',  # 2025년 6월 26일에 게재 시작
+            
+            # English detailed date formats
             r'Started running on\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})',  # Started running on Jul 1, 2025
-            r'게재 시작일:\s*([^\n]+)',
-            r'시작일:\s*([^\n]+)'
+            r'Started running on\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})',   # Started running on 1 Jul 2025
+            
+            # Generic date patterns
+            r'게재\s+시작일:\s*([^\n]+)',
+            r'시작일:\s*([^\n]+)',
+            r'게재\s+시작:\s*([^\n]+)',
+            
+            # Fallback to month only
+            r'(\d{4}년\s*\d{1,2}월)',  # 2025년 7월
         ]
         
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
-                return match.group(1).strip()
+                result = match.group(1).strip()
+                # Clean up the result
+                result = re.sub(r'\s+', ' ', result)  # Normalize whitespace
+                return result
         
         return ""
     
