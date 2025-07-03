@@ -191,17 +191,14 @@ class FacebookScraper(BaseScraper):
         Returns:
             List[WebElement]: List of ad card elements
         """
-        # Try primary selector
+        # Try primary selector - div with role="article"
         cards = self.safe_find_elements(By.CSS_SELECTOR, self.selectors.AD_CARD_CONTAINER)
         
         if not cards:
-            # Try alternative selector using XPath
+            # Try XPath alternative
             cards = self.safe_find_elements(By.XPATH, self.selectors.AD_CARD_CONTAINER_ALT)
         
-        if not cards:
-            # Try finding by common patterns
-            cards = self.safe_find_elements(By.CSS_SELECTOR, "[data-testid], [role='article'], .card")
-        
+        self.logger.info(f"Found {len(cards)} ad cards using role='article' selector")
         return cards
     
     def _scrape_ad_card(self, card_element, card_index: int) -> Optional[Dict[str, Any]]:
@@ -246,107 +243,137 @@ class FacebookScraper(BaseScraper):
     
     def _extract_library_id(self, card_element) -> str:
         """Extract library ID from ad card."""
-        # Try CSS selector first
-        id_element = self.safe_find_element(By.CSS_SELECTOR, self.selectors.LIBRARY_ID, card_element)
-        if id_element:
-            # Check if it's a link with library ID in href
-            href = self.get_element_attribute(id_element, 'href')
-            if href and '/ads/library/' in href:
-                # Extract ID from URL
-                match = re.search(r'/ads/library/(\w+)', href)
-                if match:
-                    return match.group(1)
+        try:
+            # Look for text containing "라이브러리 ID:" or "Library ID:"
+            id_elements = self.safe_find_elements(By.XPATH, self.selectors.LIBRARY_ID_XPATH, card_element)
+            for element in id_elements:
+                text = self.get_element_text(element)
+                if text:
+                    # Extract the ID part after the colon
+                    if ':' in text:
+                        library_id = text.split(':', 1)[1].strip()
+                        if library_id:
+                            return library_id
+                    return text
             
-            # Check if it's text content
-            text = self.get_element_text(id_element)
-            if text:
-                return text
-        
-        # Try XPath approach
-        id_elements = self.safe_find_elements(By.XPATH, self.selectors.LIBRARY_ID_XPATH, card_element)
-        for element in id_elements:
-            text = self.get_element_text(element)
-            if text:
-                return text
-        
-        return ""
+            self.logger.debug("Library ID not found in card")
+            return ""
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting library ID: {str(e)}")
+            return ""
     
     def _extract_start_date(self, card_element) -> str:
         """Extract start date from ad card."""
-        # Try XPath approach first
-        date_elements = self.safe_find_elements(By.XPATH, self.selectors.START_DATE, card_element)
-        for element in date_elements:
-            text = self.get_element_text(element)
-            if text and any(keyword in text.lower() for keyword in ['started', 'running', 'active']):
-                return text
-        
-        # Try CSS selector
-        date_element = self.safe_find_element(By.CSS_SELECTOR, self.selectors.START_DATE_ALT, card_element)
-        if date_element:
-            return self.get_element_text(date_element)
-        
-        return ""
+        try:
+            # Look for date-related text
+            date_elements = self.safe_find_elements(By.XPATH, self.selectors.START_DATE_XPATH, card_element)
+            for element in date_elements:
+                text = self.get_element_text(element)
+                if text:
+                    return text
+            
+            # Also look for date patterns in the card
+            all_spans = self.safe_find_elements(By.TAG_NAME, "span", card_element)
+            for span in all_spans:
+                text = self.get_element_text(span)
+                if text and any(keyword in text for keyword in ['Started running', '게재 시작', '시작일', '2025', '2024']):
+                    return text
+            
+            return ""
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting start date: {str(e)}")
+            return ""
     
     def _extract_platforms(self, card_element) -> List[str]:
         """Extract platforms from ad card."""
-        platforms = []
-        
-        # Try XPath approach
-        platform_elements = self.safe_find_elements(By.XPATH, self.selectors.PLATFORMS, card_element)
-        for element in platform_elements:
-            text = self.get_element_text(element)
-            if text:
-                platforms.append(text)
-        
-        # Try CSS selector
-        if not platforms:
-            platform_elements = self.safe_find_elements(By.CSS_SELECTOR, self.selectors.PLATFORMS_ALT, card_element)
+        try:
+            platforms = []
+            
+            # Look for platform information
+            platform_elements = self.safe_find_elements(By.XPATH, self.selectors.PLATFORMS_XPATH, card_element)
             for element in platform_elements:
                 text = self.get_element_text(element)
                 if text:
                     platforms.append(text)
-        
-        return platforms
+            
+            # Also look for platform icons/text patterns
+            all_spans = self.safe_find_elements(By.TAG_NAME, "span", card_element)
+            for span in all_spans:
+                text = self.get_element_text(span)
+                if text and any(platform in text for platform in ['Facebook', 'Instagram', '플랫폼']):
+                    if text not in platforms:
+                        platforms.append(text)
+            
+            # Default to common platforms if none found
+            if not platforms:
+                platforms = ['Facebook', 'Instagram']
+            
+            return platforms
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting platforms: {str(e)}")
+            return ['Facebook']
     
     def _extract_thumbnail_url(self, card_element) -> str:
         """Extract thumbnail image URL from ad card."""
-        # Try CSS selector
-        img_element = self.safe_find_element(By.CSS_SELECTOR, self.selectors.THUMBNAIL_IMAGE, card_element)
-        if img_element:
-            return self.get_element_attribute(img_element, 'src')
-        
-        # Try XPath approach
-        img_elements = self.safe_find_elements(By.XPATH, self.selectors.THUMBNAIL_IMAGE_XPATH, card_element)
-        for element in img_elements:
-            src = self.get_element_attribute(element, 'src')
-            if src:
-                return src
-        
-        return ""
+        try:
+            # Look for images in the card
+            img_elements = self.safe_find_elements(By.CSS_SELECTOR, self.selectors.THUMBNAIL_IMAGE, card_element)
+            for img in img_elements:
+                src = self.get_element_attribute(img, 'src')
+                if src and ('scontent' in src or 'fbcdn' in src):
+                    return src
+            
+            # Try any image element
+            all_imgs = self.safe_find_elements(By.TAG_NAME, "img", card_element)
+            for img in all_imgs:
+                src = self.get_element_attribute(img, 'src')
+                if src and not src.startswith('data:'):
+                    return src
+            
+            return ""
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting thumbnail URL: {str(e)}")
+            return ""
     
     def _extract_learn_more_url(self, card_element) -> str:
         """Extract learn more URL from ad card."""
-        # Try CSS selector
-        link_element = self.safe_find_element(By.CSS_SELECTOR, self.selectors.LEARN_MORE_LINK, card_element)
-        if link_element:
-            return self.get_element_attribute(link_element, 'href')
-        
-        # Try XPath approach
-        link_elements = self.safe_find_elements(By.XPATH, self.selectors.LEARN_MORE_LINK_XPATH, card_element)
-        for element in link_elements:
-            href = self.get_element_attribute(element, 'href')
-            if href:
-                return href
-        
-        return ""
+        try:
+            # Look for "Learn More" or "자세히 알아보기" button
+            learn_more_elements = self.safe_find_elements(By.XPATH, self.selectors.LEARN_MORE_BUTTON_XPATH, card_element)
+            for element in learn_more_elements:
+                href = self.get_element_attribute(element, 'href')
+                if href:
+                    return href
+            
+            # Look for any link in the bottom area of the card
+            all_links = self.safe_find_elements(By.TAG_NAME, "a", card_element)
+            for link in all_links:
+                text = self.get_element_text(link)
+                href = self.get_element_attribute(link, 'href')
+                if href and ('Learn More' in text or '자세히 알아보기' in text or 'Shop Now' in text):
+                    return href
+            
+            return ""
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting learn more URL: {str(e)}")
+            return ""
     
     def _extract_multiple_versions(self, card_element) -> List[str]:
         """Extract multiple version images from ad details."""
         try:
+            # Check if this ad has multiple versions
+            multiple_versions_indicator = self.safe_find_element(By.XPATH, self.selectors.MULTIPLE_VERSIONS_INDICATOR_XPATH, card_element)
+            if not multiple_versions_indicator:
+                self.logger.debug("No multiple versions indicator found")
+                return []
+            
             # Find and click "See ad details" button
-            details_button = self.safe_find_element(By.CSS_SELECTOR, self.selectors.SEE_AD_DETAILS_BUTTON, card_element)
-            if not details_button:
-                details_button = self.safe_find_element(By.XPATH, self.selectors.SEE_AD_DETAILS_BUTTON_XPATH, card_element)
+            details_button = self.safe_find_element(By.XPATH, self.selectors.SEE_AD_DETAILS_BUTTON_XPATH, card_element)
             
             if not details_button:
                 self.logger.debug("No 'See ad details' button found")
@@ -358,30 +385,21 @@ class FacebookScraper(BaseScraper):
                 return []
             
             # Wait for modal to appear
-            time.sleep(2)
+            time.sleep(3)
             
-            # Look for multiple versions section
-            versions_section = self.safe_find_element(By.CSS_SELECTOR, self.selectors.MULTIPLE_VERSIONS_SECTION)
-            if not versions_section:
-                versions_section = self.safe_find_element(By.XPATH, self.selectors.MULTIPLE_VERSIONS_SECTION_XPATH)
-            
+            # Look for images in the modal
             image_urls = []
+            modal_images = self.safe_find_elements(By.CSS_SELECTOR, "img[src*='scontent'], img[src*='fbcdn']")
             
-            if versions_section:
-                # Extract images from versions section
-                img_elements = self.safe_find_elements(By.CSS_SELECTOR, self.selectors.MULTIPLE_VERSIONS_IMAGES, versions_section)
-                if not img_elements:
-                    img_elements = self.safe_find_elements(By.XPATH, self.selectors.MULTIPLE_VERSIONS_IMAGES_XPATH, versions_section)
-                
-                for img in img_elements:
-                    src = self.get_element_attribute(img, 'src')
-                    if src:
-                        image_urls.append(src)
+            for img in modal_images:
+                src = self.get_element_attribute(img, 'src')
+                if src and ('scontent' in src or 'fbcdn' in src):
+                    image_urls.append(src)
             
             # Close modal
             self._close_modal()
             
-            return image_urls
+            return list(set(image_urls))  # Remove duplicates
             
         except Exception as e:
             self.logger.error(f"Error extracting multiple versions: {str(e)}")
@@ -392,9 +410,7 @@ class FacebookScraper(BaseScraper):
         """Close any open modal/popup."""
         try:
             # Try to find and click close button
-            close_button = self.safe_find_element(By.CSS_SELECTOR, self.selectors.CLOSE_BUTTON)
-            if not close_button:
-                close_button = self.safe_find_element(By.XPATH, self.selectors.CLOSE_BUTTON_XPATH)
+            close_button = self.safe_find_element(By.XPATH, self.selectors.CLOSE_BUTTON_XPATH)
             
             if close_button:
                 self.safe_click(close_button)

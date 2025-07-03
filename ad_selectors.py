@@ -16,58 +16,43 @@ class FacebookSelectors:
     """
     Selector definitions for Facebook Ad Library.
     
-    These selectors use robust strategies to minimize breakage when Facebook
-    updates their HTML structure.
+    These selectors are based on actual Facebook Ad Library structure
+    as observed in the Korean and English versions.
     """
     
-    # Main ad card container - using data attributes preferred by Facebook
-    AD_CARD_CONTAINER = "[data-testid='ad-library-card']"
+    # Main ad card container - each ad is in a separate card
+    AD_CARD_CONTAINER = "div[role='article']"
+    AD_CARD_CONTAINER_ALT = "//div[@role='article']"
     
-    # Alternative selectors for ad cards using relative positioning
-    AD_CARD_CONTAINER_ALT = "//div[contains(@role, 'article') or contains(@class, 'card')]"
+    # Library ID - appears as "라이브러리 ID: " or "Library ID: " followed by the ID
+    LIBRARY_ID_XPATH = "//span[contains(text(), '라이브러리 ID:') or contains(text(), 'Library ID:')]"
     
-    # Library ID - typically found in data attributes or as part of URLs
-    LIBRARY_ID = "[data-testid='library-id'], [data-ad-id], a[href*='/ads/library/']"
-    LIBRARY_ID_XPATH = "//span[contains(text(), 'Library ID:')]/following-sibling::span | //a[contains(@href, '/ads/library/')]/@href"
+    # Start date - appears as "Started running on" or date information
+    START_DATE_XPATH = "//span[contains(text(), 'Started running') or contains(text(), '게재 시작일') or contains(text(), '시작일')]"
     
-    # Start date - looking for date patterns near "Started running" text
-    START_DATE = "//span[contains(text(), 'Started running')]/following-sibling::span | //span[contains(text(), 'Started running')]/parent::*/following-sibling::*//span"
-    START_DATE_ALT = "[data-testid='start-date'], [data-testid='ad-start-date']"
+    # Platforms - Facebook and Instagram icons/text
+    PLATFORMS_XPATH = "//span[contains(text(), 'Platforms') or contains(text(), '플랫폼')]//following-sibling::*"
     
-    # Platforms - typically shown as badges or chips
-    PLATFORMS = "//span[contains(text(), 'Platforms:')]/following-sibling::* | //div[contains(@aria-label, 'Platform')]//span"
-    PLATFORMS_ALT = "[data-testid='platforms'], [data-testid='ad-platforms'] span"
+    # Thumbnail image - main ad image
+    THUMBNAIL_IMAGE = "img[src*='scontent'], img[src*='fbcdn']"
     
-    # Thumbnail image - main image in the ad card
-    THUMBNAIL_IMAGE = "img[src*='scontent'], img[src*='fbcdn'], [data-testid='ad-image'] img"
-    THUMBNAIL_IMAGE_XPATH = "//img[contains(@src, 'scontent') or contains(@src, 'fbcdn')]/@src"
+    # Learn more button - "Learn More" or "자세히 알아보기"
+    LEARN_MORE_BUTTON_XPATH = "//span[contains(text(), 'Learn More') or contains(text(), '자세히 알아보기')]/parent::*"
     
-    # Learn more link - external link from the ad
-    LEARN_MORE_LINK = "a[href*='l.facebook.com'], a[aria-label*='Learn more'], a[data-testid='learn-more-link']"
-    LEARN_MORE_LINK_XPATH = "//a[contains(@href, 'l.facebook.com') or contains(@aria-label, 'Learn more')]/@href"
+    # See ad details button - "See ad details" or "광고 상세 정보 보기"
+    SEE_AD_DETAILS_BUTTON_XPATH = "//span[contains(text(), 'See ad details') or contains(text(), '광고 상세 정보 보기')]/parent::*"
     
-    # See ad details button - button to view additional versions
-    SEE_AD_DETAILS_BUTTON = "button[aria-label*='See ad details'], button[data-testid='see-ad-details'], button:contains('See ad details')"
-    SEE_AD_DETAILS_BUTTON_XPATH = "//button[contains(@aria-label, 'See ad details') or contains(text(), 'See ad details')]"
+    # Multiple versions indicator - "This ad has multiple versions" or "여러 버전이 있는 광고입니다"
+    MULTIPLE_VERSIONS_INDICATOR_XPATH = "//span[contains(text(), 'multiple versions') or contains(text(), '여러 버전')]"
     
-    # Multiple versions section - appears in the detail popup
-    MULTIPLE_VERSIONS_SECTION = "[data-testid='multiple-versions'], [aria-label*='multiple versions']"
-    MULTIPLE_VERSIONS_SECTION_XPATH = "//div[contains(text(), 'multiple versions') or contains(@aria-label, 'multiple versions')]"
+    # Close button for modal - X button or close text
+    CLOSE_BUTTON_XPATH = "//div[@aria-label='Close' or @aria-label='닫기']"
     
-    # Images within multiple versions section
-    MULTIPLE_VERSIONS_IMAGES = "img[src*='scontent'], img[src*='fbcdn']"
-    MULTIPLE_VERSIONS_IMAGES_XPATH = "//div[contains(text(), 'multiple versions')]//img[contains(@src, 'scontent') or contains(@src, 'fbcdn')]/@src"
+    # Website link - bottom of ad card showing the domain
+    WEBSITE_LINK_XPATH = "//span[contains(text(), '.COM') or contains(text(), '.com')]/parent::*"
     
-    # Close button for popup/modal
-    CLOSE_BUTTON = "button[aria-label*='Close'], button[data-testid='close-button'], [role='button'][aria-label*='Close']"
-    CLOSE_BUTTON_XPATH = "//button[contains(@aria-label, 'Close') or contains(@aria-label, 'close')]"
-    
-    # Sponsored indicator - used as anchor for relative positioning
-    SPONSORED_ANCHOR = "//span[contains(text(), 'Sponsored')]"
-    
-    # Load more button or infinite scroll trigger
-    LOAD_MORE_BUTTON = "button[aria-label*='Load more'], button[data-testid='load-more']"
-    LOAD_MORE_TRIGGER = "[data-testid='load-more-trigger'], [data-testid='infinite-scroll-trigger']"
+    # Ad status - "Active" or "활성"
+    AD_STATUS_XPATH = "//span[contains(text(), 'Active') or contains(text(), '활성')]"
 
 
 class GoogleSelectors:
