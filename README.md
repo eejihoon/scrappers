@@ -117,7 +117,7 @@ python main.py --page-id "119546338123785" --no-headless
 | `--country` | 국가 코드 (KR, US, JP 등) | US |
 | `--media-type` | 미디어 타입 (all, image, video, text) | all |
 | `--active-status` | 광고 상태 (all, active, inactive) | active |
-| `--max-ads` | 최대 수집 광고 수 | 100 |
+| `--max-ads` | 최대 수집 광고 수 | 무제한 |
 | `--headless` | 헤드리스 모드 활성화 | True |
 | `--no-headless` | 헤드리스 모드 비활성화 | - |
 | `--timeout` | 페이지 로드 대기 시간 (초) | 30 |
