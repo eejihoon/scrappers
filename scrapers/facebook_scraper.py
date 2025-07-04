@@ -519,7 +519,7 @@ class FacebookScraper(BaseScraper):
                 if not ('scontent' in src or 'fbcdn' in src):
                     continue
                 
-                # Skip profile pictures based on URL patterns
+                # Skip profile pictures based on URL patterns and image content indicators
                 if any(pattern in src.lower() for pattern in [
                     's148x148',    # Common profile pic size (more flexible)
                     's60x60',      # Small profile pic
@@ -530,8 +530,9 @@ class FacebookScraper(BaseScraper):
                     'c148.148',
                     'c60.60'
                 ]):
-                    self.logger.debug(f"Skipping profile picture: {src}")
+                    self.logger.debug(f"Skipping profile picture by URL pattern: {src}")
                     continue
+                
                 
                 # Get parent element class/attributes to identify context
                 parent_classes = ""
