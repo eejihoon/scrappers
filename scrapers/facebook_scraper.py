@@ -297,38 +297,120 @@ class FacebookScraper(BaseScraper):
         return ""
     
     def _extract_start_date_simple(self, text: str) -> str:
-        """Extract start date from text."""
+        """Extract start date from text and convert to yyyy-MM-dd format."""
         import re
+        from datetime import datetime
         
         # Look for detailed date patterns first (more specific to less specific)
         patterns = [
             # Korean detailed date formats
-            r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.에\s+게재\s+시작함)',  # 2025. 6. 26.에 게재 시작함
-            r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.에\s+게재\s+시작)',   # 2025. 6. 26.에 게재 시작
-            r'(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.)',                 # 2025. 6. 26.
-            r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일)',                # 2025년 6월 26일
-            r'(\d{4}년\s*\d{1,2}월\s*\d{1,2}일에\s+게재\s+시작)',  # 2025년 6월 26일에 게재 시작
-            
-            # English detailed date formats
-            r'Started running on\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})',  # Started running on Jul 1, 2025
-            r'Started running on\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})',   # Started running on 1 Jul 2025
-            
-            # Generic date patterns
-            r'게재\s+시작일:\s*([^\n]+)',
-            r'시작일:\s*([^\n]+)',
-            r'게재\s+시작:\s*([^\n]+)',
-            
-            # Fallback to month only
-            r'(\d{4}년\s*\d{1,2}월)',  # 2025년 7월
+            r'(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.에\s+게재\s+시작함',  # 2025. 6. 26.에 게재 시작함
+            r'(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.에\s+게재\s+시작',   # 2025. 6. 26.에 게재 시작
+            r'(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.',                 # 2025. 6. 26.
+            r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일',                # 2025년 6월 26일
+            r'(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일에\s+게재\s+시작',  # 2025년 6월 26일에 게재 시작
         ]
         
+        # Try detailed patterns first (with day)
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
+                year = int(match.group(1))
+                month = int(match.group(2))
+                day = int(match.group(3))
+                try:
+                    return f"{year:04d}-{month:02d}-{day:02d}"
+                except ValueError:
+                    continue
+        
+        # English date patterns
+        english_patterns = [
+            r'Started running on\s+([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})',  # Started running on Jul 1, 2025
+            r'Started running on\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})',   # Started running on 1 Jul 2025
+        ]
+        
+        month_map = {
+            'jan': 1, 'january': 1, 'feb': 2, 'february': 2, 'mar': 3, 'march': 3,
+            'apr': 4, 'april': 4, 'may': 5, 'jun': 6, 'june': 6,
+            'jul': 7, 'july': 7, 'aug': 8, 'august': 8, 'sep': 9, 'september': 9,
+            'oct': 10, 'october': 10, 'nov': 11, 'november': 11, 'dec': 12, 'december': 12
+        }
+        
+        for i, pattern in enumerate(english_patterns):
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                if i == 0:  # Month Day, Year format
+                    month_name = match.group(1).lower()
+                    day = int(match.group(2))
+                    year = int(match.group(3))
+                else:  # Day Month Year format
+                    day = int(match.group(1))
+                    month_name = match.group(2).lower()
+                    year = int(match.group(3))
+                
+                month = month_map.get(month_name)
+                if month:
+                    try:
+                        return f"{year:04d}-{month:02d}-{day:02d}"
+                    except ValueError:
+                        continue
+        
+        # Fallback to month only patterns (set day to 1)
+        month_only_patterns = [
+            r'(\d{4})년\s*(\d{1,2})월',  # 2025년 7월
+            r'(\d{4})\.\s*(\d{1,2})\.',  # 2025. 7.
+        ]
+        
+        for pattern in month_only_patterns:
+            match = re.search(pattern, text)
+            if match:
+                year = int(match.group(1))
+                month = int(match.group(2))
+                try:
+                    return f"{year:04d}-{month:02d}-01"
+                except ValueError:
+                    continue
+        
+        # Generic patterns - try to extract and return as-is if conversion fails
+        generic_patterns = [
+            r'게재\s+시작일:\s*([^\n]+)',
+            r'시작일:\s*([^\n]+)',
+            r'게재\s+시작:\s*([^\n]+)',
+        ]
+        
+        for pattern in generic_patterns:
+            match = re.search(pattern, text)
+            if match:
                 result = match.group(1).strip()
-                # Clean up the result
-                result = re.sub(r'\s+', ' ', result)  # Normalize whitespace
-                return result
+                # Try to parse any date format found
+                parsed_date = self._parse_any_date_format(result)
+                if parsed_date:
+                    return parsed_date
+        
+        return ""
+    
+    def _parse_any_date_format(self, date_str: str) -> str:
+        """Try to parse various date formats and return yyyy-MM-dd."""
+        import re
+        from datetime import datetime
+        
+        # Clean the string
+        date_str = re.sub(r'\s+', ' ', date_str.strip())
+        
+        # Try various common formats
+        formats_to_try = [
+            '%Y-%m-%d', '%Y.%m.%d', '%Y/%m/%d',
+            '%Y년 %m월 %d일', '%Y. %m. %d.',
+            '%B %d, %Y', '%d %B %Y',
+            '%m/%d/%Y', '%d/%m/%Y'
+        ]
+        
+        for fmt in formats_to_try:
+            try:
+                dt = datetime.strptime(date_str, fmt)
+                return dt.strftime('%Y-%m-%d')
+            except ValueError:
+                continue
         
         return ""
     
