@@ -423,19 +423,58 @@ class FacebookScraper(BaseScraper):
     def _extract_thumbnail_url(self, card_element) -> str:
         """Extract thumbnail image URL from ad card."""
         try:
-            # Look for images in the card
-            img_elements = self.safe_find_elements(By.CSS_SELECTOR, self.selectors.THUMBNAIL_IMAGE, card_element)
-            for img in img_elements:
-                src = self.get_element_attribute(img, 'src')
-                if src and ('scontent' in src or 'fbcdn' in src):
-                    return src
-            
-            # Try any image element
+            # Look for images in the card, prioritizing larger ad images over profile images
             all_imgs = self.safe_find_elements(By.TAG_NAME, "img", card_element)
+            
+            candidates = []
             for img in all_imgs:
                 src = self.get_element_attribute(img, 'src')
-                if src and not src.startswith('data:'):
-                    return src
+                if not src or src.startswith('data:'):
+                    continue
+                
+                # Skip if it's clearly not a Facebook content image
+                if not ('scontent' in src or 'fbcdn' in src):
+                    continue
+                
+                # Get image dimensions if possible
+                width = self.get_element_attribute(img, 'width') or '0'
+                height = self.get_element_attribute(img, 'height') or '0'
+                
+                # Try to get computed width/height
+                try:
+                    computed_width = self.driver.execute_script("return arguments[0].naturalWidth;", img) or 0
+                    computed_height = self.driver.execute_script("return arguments[0].naturalHeight;", img) or 0
+                except:
+                    computed_width = 0
+                    computed_height = 0
+                
+                # Prefer larger images (likely ad images over profile pics)
+                size_score = max(int(width), computed_width) * max(int(height), computed_height)
+                
+                # Prefer images that are not square (profile pics are usually square)
+                aspect_ratio = 1
+                if computed_width > 0 and computed_height > 0:
+                    aspect_ratio = abs(computed_width / computed_height - 1)  # Distance from 1:1 ratio
+                
+                candidates.append({
+                    'url': src,
+                    'size_score': size_score,
+                    'aspect_ratio': aspect_ratio,
+                    'width': max(int(width), computed_width),
+                    'height': max(int(height), computed_height)
+                })
+            
+            if candidates:
+                # Sort by size (larger first), then by aspect ratio (non-square first)
+                candidates.sort(key=lambda x: (x['size_score'], x['aspect_ratio']), reverse=True)
+                
+                # Filter out very small images (likely icons/profile pics)
+                large_candidates = [c for c in candidates if c['width'] > 100 and c['height'] > 100]
+                
+                if large_candidates:
+                    return large_candidates[0]['url']
+                elif candidates:
+                    return candidates[0]['url']
             
             return ""
             
