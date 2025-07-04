@@ -521,14 +521,14 @@ class FacebookScraper(BaseScraper):
                 
                 # Skip profile pictures based on URL patterns
                 if any(pattern in src.lower() for pattern in [
-                    '/s148x148_',  # Common profile pic size
-                    '/s60x60_',    # Small profile pic
-                    '/s32x32_',    # Tiny profile pic
+                    's148x148',    # Common profile pic size (more flexible)
+                    's60x60',      # Small profile pic
+                    's32x32',      # Tiny profile pic
                     'profile_picture',
-                    '/p148x148/',
-                    '/p60x60/',
-                    '/c148.148.',
-                    '/c60.60.'
+                    'p148x148',
+                    'p60x60',
+                    'c148.148',
+                    'c60.60'
                 ]):
                     self.logger.debug(f"Skipping profile picture: {src}")
                     continue
