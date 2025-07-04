@@ -505,7 +505,8 @@ class FacebookScraper(BaseScraper):
     def _extract_thumbnail_url(self, card_element) -> str:
         """Extract thumbnail image URL from ad card."""
         try:
-            # Look for images in the card, prioritizing larger ad images over profile images
+            # Strategy 1: Look for images that are NOT profile pictures
+            # Profile pics usually have specific patterns in their URLs or are in specific containers
             all_imgs = self.safe_find_elements(By.TAG_NAME, "img", card_element)
             
             candidates = []
@@ -518,45 +519,103 @@ class FacebookScraper(BaseScraper):
                 if not ('scontent' in src or 'fbcdn' in src):
                     continue
                 
-                # Get image dimensions if possible
-                width = self.get_element_attribute(img, 'width') or '0'
-                height = self.get_element_attribute(img, 'height') or '0'
+                # Skip profile pictures based on URL patterns
+                if any(pattern in src.lower() for pattern in [
+                    '/s148x148_',  # Common profile pic size
+                    '/s60x60_',    # Small profile pic
+                    '/s32x32_',    # Tiny profile pic
+                    'profile_picture',
+                    '/p148x148/',
+                    '/p60x60/',
+                    '/c148.148.',
+                    '/c60.60.'
+                ]):
+                    self.logger.debug(f"Skipping profile picture: {src}")
+                    continue
                 
-                # Try to get computed width/height
+                # Get parent element class/attributes to identify context
+                parent_classes = ""
+                try:
+                    parent = img.find_element(By.XPATH, "..")
+                    parent_classes = self.get_element_attribute(parent, 'class') or ""
+                    
+                    # Skip if parent suggests it's a profile image
+                    if any(keyword in parent_classes.lower() for keyword in [
+                        'profile', 'avatar', 'page-pic', 'page_pic'
+                    ]):
+                        self.logger.debug(f"Skipping based on parent class: {parent_classes}")
+                        continue
+                except:
+                    pass
+                
+                # Get image dimensions
+                width = int(self.get_element_attribute(img, 'width') or '0')
+                height = int(self.get_element_attribute(img, 'height') or '0')
+                
+                # Try to get computed/natural dimensions
                 try:
                     computed_width = self.driver.execute_script("return arguments[0].naturalWidth;", img) or 0
                     computed_height = self.driver.execute_script("return arguments[0].naturalHeight;", img) or 0
+                    # Use natural dimensions if available and larger
+                    if computed_width > width:
+                        width = computed_width
+                    if computed_height > height:
+                        height = computed_height
                 except:
-                    computed_width = 0
-                    computed_height = 0
+                    pass
                 
-                # Prefer larger images (likely ad images over profile pics)
-                size_score = max(int(width), computed_width) * max(int(height), computed_height)
+                # Skip very small images (likely icons)
+                if width > 0 and height > 0 and (width < 80 or height < 80):
+                    self.logger.debug(f"Skipping small image: {width}x{height}")
+                    continue
                 
-                # Prefer images that are not square (profile pics are usually square)
-                aspect_ratio = 1
-                if computed_width > 0 and computed_height > 0:
-                    aspect_ratio = abs(computed_width / computed_height - 1)  # Distance from 1:1 ratio
+                # Calculate scores
+                size_score = width * height
+                
+                # Prefer non-square images (ads are often rectangular)
+                aspect_ratio_score = 0
+                if width > 0 and height > 0:
+                    ratio = max(width, height) / min(width, height)
+                    aspect_ratio_score = ratio if ratio > 1.2 else 0  # Prefer rectangular over square
+                
+                # Bonus for larger images
+                size_bonus = 1 if size_score > 50000 else 0  # ~224x224 or larger
+                
+                # Check if image appears to be in the main content area (not header/sidebar)
+                position_score = 0
+                try:
+                    img_rect = self.driver.execute_script("""
+                        var rect = arguments[0].getBoundingClientRect();
+                        return {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
+                    """, img)
+                    # Prefer images that are not at the very top (likely not profile pics)
+                    if img_rect and img_rect.get('y', 0) > 50:
+                        position_score = 1
+                except:
+                    pass
+                
+                total_score = size_score + (aspect_ratio_score * 10000) + (size_bonus * 20000) + (position_score * 5000)
                 
                 candidates.append({
                     'url': src,
+                    'width': width,
+                    'height': height,
                     'size_score': size_score,
-                    'aspect_ratio': aspect_ratio,
-                    'width': max(int(width), computed_width),
-                    'height': max(int(height), computed_height)
+                    'aspect_ratio_score': aspect_ratio_score,
+                    'total_score': total_score,
+                    'parent_classes': parent_classes
                 })
+                
+                self.logger.debug(f"Image candidate: {width}x{height}, score: {total_score}, url: {src[:100]}...")
             
             if candidates:
-                # Sort by size (larger first), then by aspect ratio (non-square first)
-                candidates.sort(key=lambda x: (x['size_score'], x['aspect_ratio']), reverse=True)
+                # Sort by total score (higher is better)
+                candidates.sort(key=lambda x: x['total_score'], reverse=True)
                 
-                # Filter out very small images (likely icons/profile pics)
-                large_candidates = [c for c in candidates if c['width'] > 100 and c['height'] > 100]
-                
-                if large_candidates:
-                    return large_candidates[0]['url']
-                elif candidates:
-                    return candidates[0]['url']
+                # Return the highest scoring image
+                best_candidate = candidates[0]
+                self.logger.debug(f"Selected best image: {best_candidate['width']}x{best_candidate['height']}, score: {best_candidate['total_score']}")
+                return best_candidate['url']
             
             return ""
             
